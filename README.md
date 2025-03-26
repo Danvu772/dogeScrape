@@ -12,6 +12,9 @@ This is a project to scrape the Department of Government Efficiency website to g
 ## exploreData.py
 * This is sort of my data playgroud that I use to test the scripts, make a report, etc.
 
+## Notes
+- There are a lot of FPDS links that has some missing data. The missing data is denoted by a lack of text in a table cell. You can take a look at the exploreData script to see the rows that have missing data. 
+- I had trouble looking for how this information looks when accessing the doge.gov website, since I can't exactly search for anything on the website (elon help a brother out). I will look for ways to refine the script so I can account for this missing data.
 
 
 ## Future features 
