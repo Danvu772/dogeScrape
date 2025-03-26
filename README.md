@@ -12,7 +12,10 @@ Few notes for current version:
 ## Some interesting data grabbed using the DOGE website!
 
 <b>Total savings for Contracts:</b> $19,730,342,478.00
+
 <b>Total savings for Grants:</b> $17,961,609,640.37
+
 <b>Total savings for Real Estate:</b> $349,341,035.00
+
 
 <b>Combined total savings:</b> $38,041,293,153.37
