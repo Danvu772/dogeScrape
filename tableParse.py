@@ -10,12 +10,9 @@ def clean_dollar_amount(value):
 
 def parse_tables(soup):
     tables = soup.find_all('table')
-
     if not tables:
         return None
-
     headers = [th.text.strip() for th in tables[0].find_all('th')]
-
     def extract_row_data(cells):
         return [
             cell.get('title') if cell.get('title') else
@@ -27,13 +24,11 @@ def parse_tables(soup):
             else 'missing data'
             for cell in cells
         ]
-
     all_rows = [
         extract_row_data(row.find_all('td')) + [''] * (len(headers) - len(row.find_all('td')))
         for table in tables
         for row in table.find_all('tr')[1:]
     ]
-    
     return headers, all_rows
 
 def save_to_csv(headers, rows, output_file):
@@ -46,14 +41,11 @@ def main():
         ('./scraped_html/grants.html', 'doge_grants_savings.csv'),
         ('./scraped_html/real_estate.html', 'doge_real_estate_savings.csv')
     ]
-
     output_csv_folder = './csv_output/'
     os.makedirs(output_csv_folder, exist_ok=True)
-
     for html_path, csv_name in html_files:
         with open(html_path, 'r', encoding='utf-8') as file:
             soup = BeautifulSoup(file, 'html.parser')
-
             result = parse_tables(soup)
             if result:
                 headers, rows = result
