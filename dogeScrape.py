@@ -1,167 +1,74 @@
-import argparse
-import pandas as pd
-import os
-from bs4 import BeautifulSoup
-from html_cleaner import clean_html
+import re
+from selenium.webdriver import Firefox
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.firefox.options import Options
 
-def main():
-    # Define valid table choices
-    tableChoices = ['Contracts', 'Grants', 'RealEstate']
+def setup_driver():
+    options = Options()
+    options.add_argument('-headless')
+    return Firefox(options=options)
 
-    parser = argparse.ArgumentParser(description="Scrape and process HTML tables for Contracts, Grants, or RealEstate.")
-    parser.add_argument("table_format", choices=tableChoices + ["all"],
-                        help="Specify the table format to process: 'Contracts', 'Grants', 'RealEstate', or 'all' to process everything.")
-    args = parser.parse_args()
+def fetch_html(url):
+    driver = setup_driver()
+    driver.get(url)
+    table_types = ['contracts', 'grants', 'real_estate']
 
-    # Process all table formats or a single one
-    if args.table_format.lower() == "all":
-        for choice in tableChoices:
-            print(f"Processing: {choice}")
-            dogeScrape(choice)
-    else:
-        dogeScrape(args.table_format)
+    # Loop through each table and fetch its HTML
+    for i in range(3):  # Adjust this if more tables are to be scraped
+        table_content = ''
+        count = 0  # Initialize the count outside the loop to track number of pages processed
+        while True:  # Loop until the next button is disabled
+            try:
+                # Wait for the shadow-div class to be present
+                shadow_div_xpath = '//table/ancestor::div[2][contains(@class, "shadow-lg")]'
+                WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.XPATH, shadow_div_xpath)))
 
-def dogeScrape(table_format):
-    # Map table formats to their respective scraping functions
-    table_format_dict = {
-        'Contracts': contractScrape,
-        'Grants': grantScrape,
-        'RealEstate': realEstateScrape
-    }
+                # XPath for selecting the i-th table on the page
+                table_xpath = f'(//table)[{i + 1}]'  # XPath to select the i-th table (1-based indexing)
+                # Wait for the table to be located
+                table_element = WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.XPATH, table_xpath)))
+                html = table_element.get_attribute("outerHTML")
+                
+                # Append HTML to the corresponding table type
+                table_content += html
 
-    # Sanitize input
-    if table_format not in table_format_dict:
-        print(f"Error: Unsupported table format '{table_format}'.")
-        return
+                # Find the "Next" button by aria-label
+                next_button_xpath = f'(//button[@aria-label="Next page"])[{i + 1}]'
+                next_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, next_button_xpath)))
+                
+                # Check if the "Next" button is disabled
+                if next_button.get_attribute('disabled') is not None:
+                    print(f"Next button is disabled for table {table_types[i]}. Ending pagination.")
+                    break  # Exit the loop if the button is disabled
+                else:
+                    # If the button is enabled, click it and wait for the page to load
+                    next_button.click()
+                    print(f"Accessing index {count} of table {table_types[i]}", end='\r')  # This will print the count
+                    count += 1  # Increment count after each "Next" click
 
-    # Define file names
-    input_file = f'DOGE{table_format}.html'
-    output_file = f'DOGE{table_format}SavingsTable.csv'
+            except Exception as e:
+                print(f"Error clicking next button for table {table_types[i]}: {e}")
+                break  # Exit the loop on error
 
-    # Ensure directories are valid
-    scraped_html_path = './scraped_html/'
-    output_csv_path = './csv_output/'
+        table_filename = f'./scraped_html/{table_types[i]}.html'  # Create filename dynamically
+        with open(table_filename, 'w', encoding='utf-8') as file:
+            file.write(clean_html(table_content))  # Ensure the content is cleaned
+        print(f'Successfully saved: {table_filename}')
 
-    os.makedirs(scraped_html_path, exist_ok=True)  # Create if missing
-    os.makedirs(output_csv_path, exist_ok=True)
+    driver.quit()
 
-    # Validate file paths
-    input_file_path = os.path.join(scraped_html_path, input_file)
-    cleaned_file = f'Cleaned_{input_file}'
-    cleaned_file_path = os.path.join(scraped_html_path, cleaned_file)
-    
-    if not os.path.exists(input_file_path):
-        print(f"Error: Input file '{input_file_path}' does not exist.")
-        return
+def clean_html(html_content):
 
-    # Clean the HTML file
-    print(f"Cleaning file: {input_file_path}")
-    clean_html(input_file_path, cleaned_file_path)
-    if not os.path.exists(cleaned_file_path):
-        print(f"Error: Failed to clean file '{input_file_path}'.")
-        return
+    # Remove unnecessary newlines
+    html_content = re.sub(r'\n+', ' ', html_content)
 
-    # Parse the cleaned HTML file
-    try:
-        with open(cleaned_file_path, 'r', encoding='utf-8') as doge:
-            dogeSoup = BeautifulSoup(doge, 'html.parser')
-    except Exception as e:
-        print(f"Error reading cleaned file: {e}")
-        return
+    # Normalize excessive spaces
+    html_content = re.sub(r'\s+', ' ', html_content)
 
-    rows = dogeSoup.select('tr')
+    # Clean `title` attributes by removing random spaces
+    html_content = re.sub(r'title\s*=\s*"(.*?)"', lambda match: f'title="{match.group(1).strip()}"', html_content)
 
-    # Call the appropriate scraping function
-    print(f"Scraping data for: {table_format}")
-    database = table_format_dict[table_format](rows)
-
-    # Save data to a CSV file
-    if database:
-        df = pd.DataFrame(database)
-        output_csv_full_path = os.path.join(output_csv_path, output_file)
-        try:
-            df.to_csv(output_csv_full_path, index=False)
-            print(f"CSV file '{output_csv_full_path}' created successfully!")
-            print(f"Number of entries: {len(df)}")
-            print(df.head())
-        except Exception as e:
-            print(f"Error saving CSV file: {e}")
-    else:
-        print(f"No data found to save for {table_format}.")
-
-    # Delete the cleaned file
-    try:
-        os.remove(cleaned_file_path)
-        print(f"Deleted temporary cleaned file: {cleaned_file_path}")
-    except Exception as e:
-        print(f"Error deleting temporary file '{cleaned_file_path}': {e}")
-
-# Scraping Functions
-def realEstateScrape(rows):
-    output = []
-    for row in rows:
-        try:
-            columns = row.select('td')
-
-            main_agency = columns[0].get('title', '') if len(columns) > 0 else ''
-            location = columns[1].text.strip() if len(columns) > 1 else ''
-            sq_ft = columns[2].get('title', '') if len(columns) > 2 else ''
-            saved = float(columns[3].text.strip().replace('$', '').replace(',', '')) if len(columns) > 3 else 0.0
-
-            output.append({
-                'Main Agency': main_agency,
-                'Location': location,
-                'Sq_Ft': sq_ft,
-                'Saved': saved
-            })
-        except Exception as e:
-            print(f"Error processing row: {e}")
-    return output
-
-def grantScrape(rows):
-    output = []
-    for row in rows:
-        try:
-            columns = row.select('td')
-
-            agency = columns[0].get('title', '') if len(columns) > 0 else ''
-            uploaded_on = columns[1].text.strip() if len(columns) > 1 else ''
-            description = columns[2].get('title', '') if len(columns) > 2 else ''
-            saved = float(columns[3].text.strip().replace('$', '').replace(',', '')) if len(columns) > 3 else 0.0
-
-            output.append({
-                'Agency': agency,
-                'Uploaded On': uploaded_on,
-                'Description': description,
-                'Saved': saved
-            })
-        except Exception as e:
-            print(f"Error processing row: {e}")
-    return output
-
-def contractScrape(rows):
-    output = []
-    for row in rows:
-        try:
-            columns = row.select('td')
-
-            agency = columns[0].get('title', '') if len(columns) > 0 else ''
-            description = columns[1].get('title', '') if len(columns) > 1 else ''
-            uploaded_on = columns[2].text.strip() if len(columns) > 2 else ''
-            link = columns[3].find('a').get('href', '') if len(columns) > 3 and columns[3].find('a') else ''
-            saved = float(columns[4].text.strip()[1:].replace(',', '')) if len(columns) > 4 else 0.0
-
-            output.append({
-                'Agency': agency,
-                'Description': description,
-                'Uploaded On': uploaded_on,
-                'Link': link,
-                'Saved': saved
-            })
-        except Exception as e:
-            print(f"Error processing row: {e}")
-    return output
-
-# Run the main function
-if __name__ == "__main__":
-    main()
+    # Save the cleaned HTML content to a new file
+    return html_content
