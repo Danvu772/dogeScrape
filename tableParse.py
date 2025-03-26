@@ -1,101 +1,91 @@
-import pandas as pd
 import os
+import pandas as pd
 from bs4 import BeautifulSoup
 
-def parse_table(table):
-    """
-    Extracts data from a BeautifulSoup table element into a structured format.
-    """
-    extracted_data = []
-    headers = []
-    
-    # Extract headers
-    for th in table.find_all('th'):
-        header_text = th.text.strip()  # Strip any surrounding whitespace from the header text
-        headers.append(header_text)
+def clean_dollar_amount(value):
+    """Converts dollar amounts to float, removing commas and '$' signs."""
+    try:
+        return float(value.replace('$', '').replace(',', '').strip())
+    except ValueError:
+        return value  # Return original value if conversion fails
 
-    # Extract rows
-    rows = table.find_all('tr')[1:]  # Skip header row
-    
-    table_data = {
-        "headers": headers,
-        "rows": []
-    }
-    
-    # Process each row
-    for row in rows:
-        cells = row.find_all('td')
-        row_data = {}
+def parse_tables(soup):
+    """
+    Parses multiple tables in an HTML file while:
+    - Using headers only from the first table.
+    - Collecting all rows (excluding header rows) from all tables.
+    - Handling anchor (<a>) tags and dollar amounts.
+    """
+    tables = soup.find_all('table')
 
-        for i in range(len(headers)):
-            if i < len(cells):  
-                cell = cells[i]
+    if not tables:
+        return None  # No tables found, return None
+
+    # Extract headers from the first table
+    headers = [th.text.strip() for th in tables[0].find_all('th')]
+
+    all_rows = []
+    for table in tables:
+        rows = table.find_all('tr')[1:]  # Skip header row in every table
+        for row in rows:
+            cells = row.find_all('td')
+            row_data = []
+
+            for cell in cells:
                 cell_text = cell.text.strip()
 
-                link = None
-                if cell.find('a'):
-                    link = cell.find('a').get('href', '') 
-                    cell_text = cell.find('a').text.strip() 
-                
+                # Check for <a> tag in the cell and use the href attribute if present
+                link = cell.find('a')
+                if link and link.get('href'):
+                    cell_text = link['href']  # Use the URL from the <a> tag
+
+                # Check if the cell contains a dollar amount and convert to float
                 if '$' in cell_text:
-                    try:
-                        cell_text = cell_text.replace('$', '').replace(',', '')
-                        cell_text = float(cell_text)
-                    except ValueError:
-                        pass  
-                if link:
-                    row_data[headers[i]] = link  
-                else:
-                    row_data[headers[i]] = cell_text  
+                    cell_text = clean_dollar_amount(cell_text)
 
-            else:
-                row_data[headers[i]] = ''  # Handle missing cells
-            
-        table_data["rows"].append(row_data)
-    
-    extracted_data.append(table_data)
-    
-    return extracted_data
+                skeleton_div = cell.find('div', class_='skeleton-shine')
+                if skeleton_div:
+                    cell_text = 'missing data'
+                    
+                row_data.append(cell_text)
 
-def save_to_csv(data, output_path):
+            # Ensure row has the correct number of columns (padding if necessary)
+            if len(row_data) < len(headers):
+                row_data.extend([''] * (len(headers) - len(row_data)))  # Pad missing cells
+
+            all_rows.append(row_data)
+
+    return headers, all_rows
+
+def save_to_csv(headers, rows, output_file):
     """
-    Saves the parsed data to CSV files.
+    Saves extracted table data into a CSV file.
     """
-    tableMap = ['contracts', 'grants', 'real_estate']
-    for i, table in enumerate(data):
-        df = pd.DataFrame(table["rows"], columns=table["headers"])
-        csv_file = os.path.join(output_path, f'doge_{tableMap[i]}_savings.csv')
-        df.to_csv(csv_file, index=False)
-        print(f"Saved: {csv_file}")
+    df = pd.DataFrame(rows, columns=headers)
+    df.to_csv(output_file, index=False)
+    print(f"Saved: {output_file}")
 
 def main():
-    output_csv = './csv_output/'
-
     html_files = [
-        './scraped_html/contracts.html',
-        './scraped_html/grants.html',
-        './scraped_html/real_estate.html'
+        ('./scraped_html/contracts.html', 'doge_contracts_savings.csv'),
+        ('./scraped_html/grants.html', 'doge_grants_savings.csv'),
+        ('./scraped_html/real_estate.html', 'doge_real_estate_savings.csv')
     ]
 
-    all_data = []
+    output_csv_folder = './csv_output/'
+    os.makedirs(output_csv_folder, exist_ok=True)  # Ensure output folder exists
 
-    for file_path in html_files:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            html_content = file.read()
-            html_soup = BeautifulSoup(html_content, 'html.parser')
+    for html_path, csv_name in html_files:
+        with open(html_path, 'r', encoding='utf-8') as file:
+            soup = BeautifulSoup(file, 'html.parser')
 
-            # Find all tables in the soup object
-            tables = html_soup.find_all('table')
-
-            # Parse each table
-            for table in tables:
-                scraped_data = parse_table(table)
-                all_data.extend(scraped_data)  # Add parsed data to the list
-
-    if all_data:
-        save_to_csv(all_data, output_csv)
-    else:
-        print("No data extracted.")
+            result = parse_tables(soup)
+            if result:
+                headers, rows = result
+                csv_path = os.path.join(output_csv_folder, csv_name)
+                save_to_csv(headers, rows, csv_path)
+            else:
+                print(f"No tables found in {html_path}")
 
 if __name__ == "__main__":
     main()
