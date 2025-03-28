@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOGE DUMP</title>
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <link rel="icon" href="https://imagedelivery.net/Eq3GW7G6_BQgeWvh9nuCig/18c6c346-51ed-4bc0-9046-bd89ba787a00/public">
+</head>
+
+<body>
+    <div class="container">
+        <div class="img-header">
+            <img src="https://imagedelivery.net/Eq3GW7G6_BQgeWvh9nuCig/194f0beb-51d5-4623-64c3-462cbf5a5800/public" alt="DOGE" width="48" height="48" class="h-8 md:h-12 w-auto">
+            <h1>DATA_FROM_THE_DOGE</h1>
+        </div>
+        <hr>
+        <p>Welcome to my scrape of the Department of Energy Efficiency! I really wasn't able to find a download from the <a href="https://doge.gov">doge.gov</a> website or really anywhere else, so I developed a script to grab all of the files for you! I created this to promote more government transparency and also to have a fun side project.</p>
+        <hr>
+        <p><b>Follow my twitter for updates! </b><br><a href="https://x.com/Danvu42">https://x.com/Danvu42</a></p>
+        <p><b>Do your own scrape here! </b><br><a href="https://github.com/Danvu772/dogeScrape">https://github.com/Danvu772/dogeScrape</a></p>
+        <hr>
+        <h4><i>DATASET LAST UPDATED: MARCH 26, 2025</i></h4>
+        {% for file in files %}
+        <h3>{{ file }}</h3>
+        <a href="{{ url_for('static', filename='json_output/' + file + '.json') }}" target="_blank">View JSON</a>
+        <br>
+        <a href="{{ url_for('static', filename='csv_output/' + file + '.csv') }}" target="_blank">Download CSV</a>
+        {% endfor %}
+    </div>
+</body>
+
+</html>
