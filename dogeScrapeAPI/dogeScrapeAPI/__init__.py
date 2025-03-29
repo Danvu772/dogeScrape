@@ -3,6 +3,7 @@ from flask import Flask, render_template, jsonify, abort
 
 app = Flask(__name__, static_url_path='/static')
 
+
 FILES_FOLDER = os.path.join(os.getcwd(), 'static')
 JSON_FOLDER = os.path.join(FILES_FOLDER, 'json_output')
 CSV_FOLDER = os.path.join(FILES_FOLDER, 'csv_output')

@@ -83,7 +83,7 @@ button:hover {
 .img-header {
     display: flex;
     align-items: center;
-    gap: 20px;  /* Optional: Adds space between the image and the heading */
+    gap: 20px;  
 }
 
 /* Mobile Responsive */
