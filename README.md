@@ -1,4 +1,4 @@
-# dogeScrape
+# DOGE Scraper
 
 This is a project to scrape the Department of Government Efficiency website to grab useful information for ease of processing. 
 
