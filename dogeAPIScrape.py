@@ -5,7 +5,7 @@ import itertools
 
 def main():
 
-    modes = ['grants', 'contracts', 'leases', 'payments']
+    modes = ['grants', 'contracts', 'leases']
 
     for mode in modes:
         total_requests = 1
