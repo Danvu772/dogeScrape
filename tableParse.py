@@ -42,7 +42,7 @@ def main():
         #('./scraped_html/real_estate.html', 'doge_real_estate_savings.csv')
         ('./scraped_html/payments.html', 'doge_payments.csv')
     ]
-    output_csv_folder = './csv_output/'
+    output_csv_folder = './web_scrape_csv_output/'
     os.makedirs(output_csv_folder, exist_ok=True)
     for html_path, csv_name in html_files:
         with open(html_path, 'r', encoding='utf-8') as file:
