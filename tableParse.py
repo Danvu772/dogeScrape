@@ -37,9 +37,10 @@ def save_to_csv(headers, rows, output_file):
 
 def main():
     html_files = [
-        ('./scraped_html/contracts.html', 'doge_contracts_savings.csv'),
-        ('./scraped_html/grants.html', 'doge_grants_savings.csv'),
-        ('./scraped_html/real_estate.html', 'doge_real_estate_savings.csv')
+        #('./scraped_html/contracts.html', 'doge_contracts_savings.csv'),
+        #('./scraped_html/grants.html', 'doge_grants_savings.csv'),
+        #('./scraped_html/real_estate.html', 'doge_real_estate_savings.csv')
+        ('./scraped_html/payments.html', 'doge_payments.csv')
     ]
     output_csv_folder = './csv_output/'
     os.makedirs(output_csv_folder, exist_ok=True)
